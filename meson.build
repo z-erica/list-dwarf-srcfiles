@@ -1,4 +1,4 @@
-project('list-dwarf-srcfiles', 'c', version: '0.1')
+project('list-dwarf-srcfiles', 'c', version: '0.2')
 
 libdwarf_dep = dependency('libdwarf')
 
