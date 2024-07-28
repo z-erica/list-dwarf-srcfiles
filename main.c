@@ -98,5 +98,10 @@ int main(int argc, char **argv) {
     for (int i = 0; i < filecount; i += 1) {
       printf("%s\n", srcfiles[i]);
     }
+
+    // NOTE: headers do not mention whether srcfiles should be freed by us, so assume not
+    dwarf_dealloc_die(die);
   }
+
+  dwarf_finish(dbg);
 }
