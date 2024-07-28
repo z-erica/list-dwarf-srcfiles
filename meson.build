@@ -1,4 +1,4 @@
-project('debug-data-source-paths', 'c', version: '0.0')
+project('debug-data-source-paths', 'c', version: '0.1')
 
 libdwarf_dep = dependency('libdwarf')
 
