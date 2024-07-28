@@ -18,10 +18,6 @@
 
 #include <libdwarf.h>
 
-static Dwarf_Debug dbg;
-static Dwarf_Die die;
-static Dwarf_Error error;
-
 static void usage(FILE *f) {
   extern char const *__progname;
   fprintf(f, "usage: %s [OPTION] FILENAME\n"
@@ -51,6 +47,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  Dwarf_Debug dbg;
+  Dwarf_Error error;
+
   int rc;
   rc = dwarf_init_path(argv[optind], NULL, 0, DW_GROUPNUMBER_ANY, NULL, NULL, &dbg, &error);
   if (rc == DW_DLV_ERROR) {
@@ -62,6 +61,9 @@ int main(int argc, char **argv) {
   }
 
   for (;;) {
+    Dwarf_Die die;
+
+    // metadata we don't need
     Dwarf_Unsigned header_length;
     Dwarf_Half version_stamp;
     Dwarf_Off abbrev_offset;
@@ -80,7 +82,7 @@ int main(int argc, char **argv) {
         &next_cu_header_offset, &header_cu_type,
         &error);
     if (rc == DW_DLV_ERROR) {
-      fprintf(stderr, "could not read next compilation unit header: %s\n", dwarf_errmsg(error));
+      fprintf(stderr, "could not read next CU header: %s\n", dwarf_errmsg(error));
       return 1;
     }
     if (rc == DW_DLV_NO_ENTRY) break;
@@ -89,7 +91,7 @@ int main(int argc, char **argv) {
     Dwarf_Signed filecount;
     rc = dwarf_srcfiles(die, &srcfiles, &filecount, &error);
     if (rc == DW_DLV_ERROR) {
-      fprintf(stderr, "could not read compilation unit source files: %s\n", dwarf_errmsg(error));
+      fprintf(stderr, "could not read CU source files: %s\n", dwarf_errmsg(error));
       return 1;
     }
 
