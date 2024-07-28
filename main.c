@@ -12,7 +12,9 @@
  * this program. If not, see <https://www.gnu.org/licenses/>. 
  */
 
+#include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -60,6 +62,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // iterate though CUs (compilation units)
   for (;;) {
     Dwarf_Die die;
 
@@ -87,6 +90,7 @@ int main(int argc, char **argv) {
     }
     if (rc == DW_DLV_NO_ENTRY) break;
 
+    // now iterate through source files referenced by the CU
     char **srcfiles;
     Dwarf_Signed filecount;
     rc = dwarf_srcfiles(die, &srcfiles, &filecount, &error);
@@ -96,10 +100,13 @@ int main(int argc, char **argv) {
     }
 
     for (int i = 0; i < filecount; i += 1) {
+      // sanity check: should contain no inline newlines
+      assert(!strchr(srcfiles[i], '\n'));
+
       printf("%s\n", srcfiles[i]);
     }
 
-    // NOTE: headers do not mention whether srcfiles should be freed by us, so assume not
+    // NOTE: libdwarf does not mention whether srcfiles should be freed by us, so assume not
     dwarf_dealloc_die(die);
   }
 
