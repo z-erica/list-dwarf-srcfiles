@@ -14,8 +14,9 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <libdwarf.h>
@@ -97,16 +98,25 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  char *path = argv[optind];
   Dwarf_Debug dbg;
   Dwarf_Error error;
-
   int rc;
-  rc = dwarf_init_path(argv[optind], NULL, 0, DW_GROUPNUMBER_ANY, NULL, NULL, &dbg, &error);
+
+  // ensure the file exists, since libdwarf won't specifically report this
+  struct stat statbuf;
+  rc = stat(path, &statbuf);
+  if (rc != 0) {
+    perror("stat");
+    return 1;
+  }
+
+  rc = dwarf_init_path(path, NULL, 0, DW_GROUPNUMBER_ANY, NULL, NULL, &dbg, &error);
   if (rc == DW_DLV_ERROR) {
     fprintf(stderr, "could not initialize libdwarf: %s\n", dwarf_errmsg(error));
     return 1;
   } else if (rc != DW_DLV_OK) {
-    fprintf(stderr, "could not initialize libdwarf\n");
+    fprintf(stderr, "could not initialize libdwarf (unsupported file format?)\n");
     return 1;
   }
 
