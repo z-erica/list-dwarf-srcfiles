@@ -30,6 +30,54 @@ static void usage(FILE *f) {
     __progname);
 }
 
+int scan_dwarf_debug(Dwarf_Debug dbg, Dwarf_Error *error) {
+  int rc;
+
+  // iterate though CUs (compilation units)
+  for (;;) {
+    Dwarf_Die die;
+
+    // metadata we don't need
+    Dwarf_Unsigned header_length;
+    Dwarf_Half version_stamp;
+    Dwarf_Off abbrev_offset;
+    Dwarf_Half address_size;
+    Dwarf_Half length_size;
+    Dwarf_Half extension_size;
+    Dwarf_Sig8 type_signature;
+    Dwarf_Unsigned typeoffset;
+    Dwarf_Unsigned next_cu_header_offset;
+    Dwarf_Half header_cu_type;
+
+    rc = dwarf_next_cu_header_e(dbg, 1, &die,
+        &header_length, &version_stamp, &abbrev_offset,
+        &address_size, &length_size, &extension_size,
+        &type_signature, &typeoffset,
+        &next_cu_header_offset, &header_cu_type,
+        error);
+    if (rc == DW_DLV_ERROR) return rc;
+    if (rc == DW_DLV_NO_ENTRY) break;
+
+    // now iterate through source files referenced by the CU
+    char **srcfiles;
+    Dwarf_Signed filecount;
+    rc = dwarf_srcfiles(die, &srcfiles, &filecount, error);
+    if (rc == DW_DLV_ERROR) return rc;
+
+    for (int i = 0; i < filecount; i += 1) {
+      // sanity check: should contain no inline newlines
+      assert(!strchr(srcfiles[i], '\n'));
+
+      printf("%s\n", srcfiles[i]);
+    }
+
+    // NOTE: libdwarf does not mention whether srcfiles should be freed by us, so assume not
+    dwarf_dealloc_die(die);
+  }
+
+  return DW_DLV_OK;
+}
+
 int main(int argc, char **argv) {
   int c;
   while ((c = getopt(argc, argv, "h")) > 0) {
@@ -62,52 +110,10 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // iterate though CUs (compilation units)
-  for (;;) {
-    Dwarf_Die die;
-
-    // metadata we don't need
-    Dwarf_Unsigned header_length;
-    Dwarf_Half version_stamp;
-    Dwarf_Off abbrev_offset;
-    Dwarf_Half address_size;
-    Dwarf_Half length_size;
-    Dwarf_Half extension_size;
-    Dwarf_Sig8 type_signature;
-    Dwarf_Unsigned typeoffset;
-    Dwarf_Unsigned next_cu_header_offset;
-    Dwarf_Half header_cu_type;
-
-    rc = dwarf_next_cu_header_e(dbg, 1, &die,
-        &header_length, &version_stamp, &abbrev_offset,
-        &address_size, &length_size, &extension_size,
-        &type_signature, &typeoffset,
-        &next_cu_header_offset, &header_cu_type,
-        &error);
-    if (rc == DW_DLV_ERROR) {
-      fprintf(stderr, "could not read next CU header: %s\n", dwarf_errmsg(error));
-      return 1;
-    }
-    if (rc == DW_DLV_NO_ENTRY) break;
-
-    // now iterate through source files referenced by the CU
-    char **srcfiles;
-    Dwarf_Signed filecount;
-    rc = dwarf_srcfiles(die, &srcfiles, &filecount, &error);
-    if (rc == DW_DLV_ERROR) {
-      fprintf(stderr, "could not read CU source files: %s\n", dwarf_errmsg(error));
-      return 1;
-    }
-
-    for (int i = 0; i < filecount; i += 1) {
-      // sanity check: should contain no inline newlines
-      assert(!strchr(srcfiles[i], '\n'));
-
-      printf("%s\n", srcfiles[i]);
-    }
-
-    // NOTE: libdwarf does not mention whether srcfiles should be freed by us, so assume not
-    dwarf_dealloc_die(die);
+  rc = scan_dwarf_debug(dbg, &error);
+  if (rc == DW_DLV_ERROR) {
+    fprintf(stderr, "could not scan file: %s\n", dwarf_errmsg(error));
+    return 1;
   }
 
   dwarf_finish(dbg);
